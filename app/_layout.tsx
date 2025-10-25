@@ -1,7 +1,7 @@
 
 import React, { useEffect } from "react";
 import { useFonts } from "expo-font";
-import { Stack, router } from "expo-router";
+import { Stack, router, useSegments } from "expo-router";
 import { SystemBars } from "react-native-edge-to-edge";
 import { useNetworkState } from "expo-network";
 import {
@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { WidgetProvider } from "@/contexts/WidgetContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { colors } from "@/styles/commonStyles";
 import "react-native-reanimated";
 
@@ -49,8 +50,91 @@ const CustomDarkTheme: Theme = {
   },
 };
 
-export default function RootLayout() {
+function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    const inAuthGroup = segments[0] === '(tabs)';
+
+    if (!isAuthenticated && inAuthGroup) {
+      // Redirect to login if not authenticated and trying to access protected routes
+      router.replace('/login');
+    } else if (isAuthenticated && segments[0] === 'login') {
+      // Redirect to home if authenticated and on login screen
+      router.replace('/(tabs)/(home)');
+    }
+  }, [isAuthenticated, isLoading, segments]);
+
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? CustomDarkTheme : CustomLightTheme}>
+      <SystemBars style="auto" />
+      <Stack
+        screenOptions={{
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: colors.card,
+          },
+          headerTintColor: colors.primary,
+          headerTitleStyle: {
+            fontWeight: '700',
+          },
+        }}
+      >
+        <Stack.Screen 
+          name="login" 
+          options={{ 
+            headerShown: false,
+            gestureEnabled: false,
+          }} 
+        />
+        <Stack.Screen 
+          name="(tabs)" 
+          options={{ 
+            headerShown: false,
+            gestureEnabled: false,
+          }} 
+        />
+        <Stack.Screen
+          name="modal"
+          options={{
+            presentation: "modal",
+            title: "Modal",
+          }}
+        />
+        <Stack.Screen
+          name="formsheet"
+          options={{
+            presentation: "formSheet",
+            title: "Form Sheet",
+          }}
+        />
+        <Stack.Screen
+          name="transparent-modal"
+          options={{
+            presentation: "transparentModal",
+            title: "Transparent Modal",
+          }}
+        />
+        <Stack.Screen
+          name="email-detail"
+          options={{
+            presentation: "card",
+            title: "Email",
+          }}
+        />
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
@@ -69,52 +153,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <WidgetProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? CustomDarkTheme : CustomLightTheme}>
-          <SystemBars style="auto" />
-          <Stack
-            screenOptions={{
-              headerShown: true,
-              headerStyle: {
-                backgroundColor: colors.card,
-              },
-              headerTintColor: colors.primary,
-              headerTitleStyle: {
-                fontWeight: '700',
-              },
-            }}
-          >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="modal"
-              options={{
-                presentation: "modal",
-                title: "Modal",
-              }}
-            />
-            <Stack.Screen
-              name="formsheet"
-              options={{
-                presentation: "formSheet",
-                title: "Form Sheet",
-              }}
-            />
-            <Stack.Screen
-              name="transparent-modal"
-              options={{
-                presentation: "transparentModal",
-                title: "Transparent Modal",
-              }}
-            />
-            <Stack.Screen
-              name="email-detail"
-              options={{
-                presentation: "card",
-                title: "Email",
-              }}
-            />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
       </WidgetProvider>
     </GestureHandlerRootView>
   );

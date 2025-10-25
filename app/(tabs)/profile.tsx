@@ -1,11 +1,42 @@
 
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, Platform, Pressable } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Platform, Pressable, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Odhlásit se',
+      'Opravdu se chcete odhlásit?',
+      [
+        {
+          text: 'Zrušit',
+          style: 'cancel',
+        },
+        {
+          text: 'Odhlásit',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/login');
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Chyba', 'Nepodařilo se odhlásit. Zkuste to prosím znovu.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const settingsOptions = [
     {
       id: '1',
@@ -69,8 +100,12 @@ export default function ProfileScreen() {
           <View style={styles.avatarLarge}>
             <IconSymbol name="person.circle.fill" size={Platform.OS === 'android' ? 100 : 80} color={colors.primary} />
           </View>
-          <Text style={styles.userName}>Uživatel Email.cz</Text>
-          <Text style={styles.userEmail}>uzivatel@email.cz</Text>
+          <Text style={styles.userName}>{user?.name || 'Uživatel Email.cz'}</Text>
+          <Text style={styles.userEmail}>{user?.email || 'uzivatel@email.cz'}</Text>
+          <View style={styles.authBadge}>
+            <IconSymbol name="checkmark.shield.fill" size={16} color={colors.primary} />
+            <Text style={styles.authBadgeText}>Přihlášeno přes Seznam.cz</Text>
+          </View>
         </View>
 
         <View style={styles.settingsSection}>
@@ -108,7 +143,7 @@ export default function ProfileScreen() {
             styles.logoutButton,
             pressed && styles.logoutButtonPressed,
           ]}
-          onPress={() => console.log('Logout')}
+          onPress={handleLogout}
         >
           <IconSymbol name="arrow.right.square.fill" size={Platform.OS === 'android' ? 24 : 20} color={colors.card} />
           <Text style={styles.logoutButtonText}>Odhlásit se</Text>
@@ -166,6 +201,21 @@ const styles = StyleSheet.create({
   userEmail: {
     fontSize: Platform.OS === 'android' ? 16 : 15,
     color: colors.textSecondary,
+    marginBottom: 12,
+  },
+  authBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.highlight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  authBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
   },
   settingsSection: {
     backgroundColor: colors.card,
