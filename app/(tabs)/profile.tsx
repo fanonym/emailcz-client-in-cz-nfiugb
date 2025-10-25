@@ -1,15 +1,63 @@
+
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Platform, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/IconSymbol";
-import { GlassView } from "expo-glass-effect";
-import { useTheme } from "@react-navigation/native";
+import { colors } from "@/styles/commonStyles";
 
 export default function ProfileScreen() {
-  const theme = useTheme();
+  const settingsOptions = [
+    {
+      id: '1',
+      icon: 'person.fill',
+      title: 'Účet',
+      description: 'Spravujte svůj účet Email.cz',
+    },
+    {
+      id: '2',
+      icon: 'bell.fill',
+      title: 'Oznámení',
+      description: 'Nastavení upozornění a notifikací',
+    },
+    {
+      id: '3',
+      icon: 'envelope.badge.fill',
+      title: 'Podpis emailu',
+      description: 'Upravte svůj emailový podpis',
+    },
+    {
+      id: '4',
+      icon: 'folder.fill',
+      title: 'Složky',
+      description: 'Organizujte své emaily do složek',
+    },
+    {
+      id: '5',
+      icon: 'shield.fill',
+      title: 'Soukromí a zabezpečení',
+      description: 'Nastavení ochrany a bezpečnosti',
+    },
+    {
+      id: '6',
+      icon: 'paintbrush.fill',
+      title: 'Vzhled',
+      description: 'Přizpůsobte si vzhled aplikace',
+    },
+    {
+      id: '7',
+      icon: 'info.circle.fill',
+      title: 'O aplikaci',
+      description: 'Verze 1.0.0',
+    },
+  ];
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {Platform.OS !== 'ios' && (
+        <View style={styles.androidHeader}>
+          <Text style={styles.androidHeaderTitle}>Nastavení</Text>
+        </View>
+      )}
       <ScrollView
         style={styles.container}
         contentContainerStyle={[
@@ -17,28 +65,54 @@ export default function ProfileScreen() {
           Platform.OS !== 'ios' && styles.contentContainerWithTabBar
         ]}
       >
-        <GlassView style={[
-          styles.profileHeader,
-          Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
-        ]} glassEffectStyle="regular">
-          <IconSymbol name="person.circle.fill" size={80} color={theme.colors.primary} />
-          <Text style={[styles.name, { color: theme.colors.text }]}>John Doe</Text>
-          <Text style={[styles.email, { color: theme.dark ? '#98989D' : '#666' }]}>john.doe@example.com</Text>
-        </GlassView>
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarLarge}>
+            <IconSymbol name="person.circle.fill" size={Platform.OS === 'android' ? 100 : 80} color={colors.primary} />
+          </View>
+          <Text style={styles.userName}>Uživatel Email.cz</Text>
+          <Text style={styles.userEmail}>uzivatel@email.cz</Text>
+        </View>
 
-        <GlassView style={[
-          styles.section,
-          Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
-        ]} glassEffectStyle="regular">
-          <View style={styles.infoRow}>
-            <IconSymbol name="phone.fill" size={20} color={theme.dark ? '#98989D' : '#666'} />
-            <Text style={[styles.infoText, { color: theme.colors.text }]}>+1 (555) 123-4567</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <IconSymbol name="location.fill" size={20} color={theme.dark ? '#98989D' : '#666'} />
-            <Text style={[styles.infoText, { color: theme.colors.text }]}>San Francisco, CA</Text>
-          </View>
-        </GlassView>
+        <View style={styles.settingsSection}>
+          {settingsOptions.map((option) => (
+            <Pressable
+              key={option.id}
+              style={({ pressed }) => [
+                styles.settingItem,
+                pressed && styles.settingItemPressed,
+              ]}
+              onPress={() => console.log(`Open ${option.title}`)}
+            >
+              <View style={styles.settingIconContainer}>
+                <IconSymbol
+                  name={option.icon as any}
+                  size={Platform.OS === 'android' ? 28 : 24}
+                  color={colors.primary}
+                />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>{option.title}</Text>
+                <Text style={styles.settingDescription}>{option.description}</Text>
+              </View>
+              <IconSymbol
+                name="chevron.right"
+                size={Platform.OS === 'android' ? 24 : 20}
+                color={colors.textSecondary}
+              />
+            </Pressable>
+          ))}
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.logoutButton,
+            pressed && styles.logoutButtonPressed,
+          ]}
+          onPress={() => console.log('Logout')}
+        >
+          <IconSymbol name="arrow.right.square.fill" size={Platform.OS === 'android' ? 24 : 20} color={colors.card} />
+          <Text style={styles.logoutButtonText}>Odhlásit se</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -47,45 +121,110 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    // backgroundColor handled dynamically
+    backgroundColor: colors.background,
+  },
+  androidHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.highlight,
+    elevation: 2,
+  },
+  androidHeaderTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
   },
   container: {
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
+    padding: Platform.OS === 'android' ? 20 : 16,
   },
   contentContainerWithTabBar: {
-    paddingBottom: 100, // Extra padding for floating tab bar
+    paddingBottom: 100,
   },
   profileHeader: {
     alignItems: 'center',
+    backgroundColor: colors.card,
     borderRadius: 12,
-    padding: 32,
+    padding: Platform.OS === 'android' ? 32 : 24,
+    marginBottom: 20,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    elevation: 2,
+  },
+  avatarLarge: {
     marginBottom: 16,
-    gap: 12,
   },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    // color handled dynamically
+  userName: {
+    fontSize: Platform.OS === 'android' ? 24 : 22,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 6,
   },
-  email: {
-    fontSize: 16,
-    // color handled dynamically
+  userEmail: {
+    fontSize: Platform.OS === 'android' ? 16 : 15,
+    color: colors.textSecondary,
   },
-  section: {
+  settingsSection: {
+    backgroundColor: colors.card,
     borderRadius: 12,
-    padding: 20,
-    gap: 12,
+    marginBottom: 20,
+    overflow: 'hidden',
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    elevation: 2,
   },
-  infoRow: {
+  settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    padding: Platform.OS === 'android' ? 20 : 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.highlight,
+    minHeight: Platform.OS === 'android' ? 80 : 70,
   },
-  infoText: {
-    fontSize: 16,
-    // color handled dynamically
+  settingItemPressed: {
+    backgroundColor: colors.highlight,
+  },
+  settingIconContainer: {
+    width: Platform.OS === 'android' ? 48 : 40,
+    height: Platform.OS === 'android' ? 48 : 40,
+    borderRadius: Platform.OS === 'android' ? 24 : 20,
+    backgroundColor: colors.highlight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: Platform.OS === 'android' ? 18 : 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  settingDescription: {
+    fontSize: Platform.OS === 'android' ? 15 : 14,
+    color: colors.textSecondary,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    padding: Platform.OS === 'android' ? 20 : 16,
+    gap: 12,
+    minHeight: Platform.OS === 'android' ? 60 : 50,
+  },
+  logoutButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  logoutButtonText: {
+    fontSize: Platform.OS === 'android' ? 18 : 16,
+    fontWeight: '700',
+    color: colors.card,
   },
 });
