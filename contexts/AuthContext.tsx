@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuthStatus = async () => {
     try {
+      console.log('Checking auth status...');
       setIsLoading(true);
       
       if (Platform.OS === 'web') {
@@ -42,7 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = localStorage.getItem(USER_KEY);
         
         if (authData && userData) {
-          setUser(JSON.parse(userData));
+          const parsedUser = JSON.parse(userData);
+          console.log('User found in localStorage:', parsedUser.email);
+          setUser(parsedUser);
+        } else {
+          console.log('No user found in localStorage');
         }
       } else {
         // For native, use SecureStore
@@ -50,18 +55,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = await SecureStore.getItemAsync(USER_KEY);
         
         if (authData && userData) {
-          setUser(JSON.parse(userData));
+          const parsedUser = JSON.parse(userData);
+          console.log('User found in SecureStore:', parsedUser.email);
+          setUser(parsedUser);
+        } else {
+          console.log('No user found in SecureStore');
         }
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
     } finally {
       setIsLoading(false);
+      console.log('Auth status check complete');
     }
   };
 
   const login = async (email: string, sessionData: any) => {
     try {
+      console.log('Login function called for:', email);
+      
       const userData: User = {
         email,
         name: email.split('@')[0],
@@ -69,9 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       if (Platform.OS === 'web') {
+        console.log('Storing user data in localStorage...');
         localStorage.setItem(AUTH_KEY, JSON.stringify(sessionData));
         localStorage.setItem(USER_KEY, JSON.stringify(userData));
       } else {
+        console.log('Storing user data in SecureStore...');
         await SecureStore.setItemAsync(AUTH_KEY, JSON.stringify(sessionData));
         await SecureStore.setItemAsync(USER_KEY, JSON.stringify(userData));
       }
@@ -86,6 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      console.log('Logout function called');
+      
       if (Platform.OS === 'web') {
         localStorage.removeItem(AUTH_KEY);
         localStorage.removeItem(USER_KEY);

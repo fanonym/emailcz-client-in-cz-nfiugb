@@ -39,6 +39,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isProcessingLogin, setIsProcessingLogin] = useState(false);
   const webViewRef = useRef<any>(null);
 
   // Seznam.cz login URL
@@ -70,11 +71,17 @@ export default function LoginScreen() {
               {
                 text: 'Jsem přihlášen',
                 onPress: async () => {
-                  await login(email || 'uzivatel@email.cz', {
-                    timestamp: Date.now(),
-                    loginMethod: 'external-browser',
-                  });
-                  router.replace('/(tabs)/(home)');
+                  try {
+                    await login(email || 'uzivatel@email.cz', {
+                      timestamp: Date.now(),
+                      loginMethod: 'external-browser',
+                    });
+                    console.log('Login successful, navigating to home...');
+                    router.replace('/(tabs)/(home)');
+                  } catch (error) {
+                    console.error('Login error:', error);
+                    Alert.alert('Chyba', 'Nepodařilo se přihlásit. Zkuste to prosím znovu.');
+                  }
                 },
               },
               { text: 'Zrušit', style: 'cancel' },
@@ -103,11 +110,17 @@ export default function LoginScreen() {
               {
                 text: 'Jsem přihlášen',
                 onPress: async () => {
-                  await login(email || 'uzivatel@email.cz', {
-                    timestamp: Date.now(),
-                    loginMethod: 'external-browser',
-                  });
-                  router.replace('/(tabs)/(home)');
+                  try {
+                    await login(email || 'uzivatel@email.cz', {
+                      timestamp: Date.now(),
+                      loginMethod: 'external-browser',
+                    });
+                    console.log('Login successful, navigating to home...');
+                    router.replace('/(tabs)/(home)');
+                  } catch (error) {
+                    console.error('Login error:', error);
+                    Alert.alert('Chyba', 'Nepodařilo se přihlásit. Zkuste to prosím znovu.');
+                  }
                 },
               },
               { text: 'Zrušit', style: 'cancel' },
@@ -130,28 +143,52 @@ export default function LoginScreen() {
   const handleWebViewNavigationStateChange = async (navState: any) => {
     console.log('WebView navigation:', navState.url);
 
+    // Prevent multiple simultaneous login attempts
+    if (isProcessingLogin) {
+      console.log('Login already in progress, skipping...');
+      return;
+    }
+
     // Check if user successfully logged in by detecting redirect or specific URL patterns
     // Seznam.cz typically redirects to email.cz or homepage after successful login
-    if (
+    const isSuccessfulLogin = 
       navState.url.includes('email.cz') ||
       navState.url.includes('homepage.szn.cz') ||
-      navState.url.includes('?login=success')
-    ) {
+      navState.url.includes('?login=success') ||
+      (navState.url.includes('szn.cz') && !navState.url.includes('login.szn.cz'));
+
+    if (isSuccessfulLogin) {
+      console.log('Successful login detected, processing...');
+      setIsProcessingLogin(true);
+
       try {
         // Extract email from URL or use the entered email
         const userEmail = email || 'uzivatel@email.cz';
         
+        console.log('Calling login function...');
         await login(userEmail, {
           timestamp: Date.now(),
-          loginMethod: 'seznam',
+          loginMethod: 'seznam-webview',
+          loginUrl: navState.url,
         });
 
-        setShowWebView(false);
+        console.log('Login successful, closing WebView...');
         
-        // Navigate to home screen
-        router.replace('/(tabs)/(home)');
+        // Close WebView first
+        setShowWebView(false);
+        setWebViewUrl('');
+        
+        // Small delay to ensure WebView is closed before navigation
+        setTimeout(() => {
+          console.log('Navigating to home screen...');
+          router.replace('/(tabs)/(home)');
+          setIsProcessingLogin(false);
+        }, 100);
+
       } catch (error) {
         console.error('Login error:', error);
+        setIsProcessingLogin(false);
+        setShowWebView(false);
         Alert.alert('Chyba', 'Nepodařilo se přihlásit. Zkuste to prosím znovu.');
       }
     }
@@ -162,11 +199,14 @@ export default function LoginScreen() {
     console.error('WebView error:', nativeEvent);
     Alert.alert('Chyba', 'Nepodařilo se načíst přihlašovací stránku.');
     setShowWebView(false);
+    setIsProcessingLogin(false);
   };
 
   const handleCloseWebView = () => {
+    console.log('Closing WebView manually');
     setShowWebView(false);
     setWebViewUrl('');
+    setIsProcessingLogin(false);
   };
 
   // WebView UI (only shown on iOS/Android)
@@ -183,6 +223,12 @@ export default function LoginScreen() {
           <Text style={styles.webViewTitle}>Přihlášení Seznam.cz</Text>
           <View style={{ width: 32 }} />
         </View>
+        {isProcessingLogin && (
+          <View style={styles.processingOverlay}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.processingText}>Přihlašování...</Text>
+          </View>
+        )}
         <WebView
           ref={webViewRef}
           source={{ uri: webViewUrl }}
@@ -512,5 +558,22 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: colors.textSecondary,
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    zIndex: 1000,
+  },
+  processingText: {
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });

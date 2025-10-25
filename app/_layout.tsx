@@ -56,17 +56,33 @@ function RootLayoutNav() {
   const segments = useSegments();
 
   useEffect(() => {
+    console.log('Navigation effect triggered:', {
+      isLoading,
+      isAuthenticated,
+      segments: segments.join('/'),
+    });
+
     if (isLoading) {
+      console.log('Still loading, skipping navigation...');
       return;
     }
 
     const inAuthGroup = segments[0] === '(tabs)';
+    const onLoginScreen = segments[0] === 'login';
+
+    console.log('Navigation state:', {
+      inAuthGroup,
+      onLoginScreen,
+      isAuthenticated,
+    });
 
     if (!isAuthenticated && inAuthGroup) {
       // Redirect to login if not authenticated and trying to access protected routes
+      console.log('Not authenticated, redirecting to login...');
       router.replace('/login');
-    } else if (isAuthenticated && segments[0] === 'login') {
+    } else if (isAuthenticated && onLoginScreen) {
       // Redirect to home if authenticated and on login screen
+      console.log('Authenticated, redirecting to home...');
       router.replace('/(tabs)/(home)');
     }
   }, [isAuthenticated, isLoading, segments]);
