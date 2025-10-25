@@ -9,13 +9,26 @@ import {
   Platform,
   Alert,
   TextInput,
+  Linking,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Conditionally import WebView only on supported platforms
+let WebView: any = null;
+const isWebViewSupported = Platform.OS === 'ios' || Platform.OS === 'android';
+
+if (isWebViewSupported) {
+  try {
+    const webViewModule = require('react-native-webview');
+    WebView = webViewModule.WebView;
+  } catch (error) {
+    console.log('WebView not available on this platform');
+  }
+}
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -26,7 +39,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<any>(null);
 
   // Seznam.cz login URL
   const SEZNAM_LOGIN_URL = 'https://login.szn.cz/';
@@ -40,12 +53,74 @@ export default function LoginScreen() {
     setIsLoading(true);
     
     // For demonstration, we'll use WebView for actual Seznam.cz authentication
-    setWebViewUrl(SEZNAM_LOGIN_URL);
-    setShowWebView(true);
-    setIsLoading(false);
+    if (isWebViewSupported && WebView) {
+      setWebViewUrl(SEZNAM_LOGIN_URL);
+      setShowWebView(true);
+      setIsLoading(false);
+    } else {
+      // On unsupported platforms, open in external browser
+      try {
+        const supported = await Linking.canOpenURL(SEZNAM_LOGIN_URL);
+        if (supported) {
+          await Linking.openURL(SEZNAM_LOGIN_URL);
+          Alert.alert(
+            'Přihlášení v prohlížeči',
+            'Přihlaste se v prohlížeči a poté se vraťte do aplikace.',
+            [
+              {
+                text: 'Jsem přihlášen',
+                onPress: async () => {
+                  await login(email || 'uzivatel@email.cz', {
+                    timestamp: Date.now(),
+                    loginMethod: 'external-browser',
+                  });
+                  router.replace('/(tabs)/(home)');
+                },
+              },
+              { text: 'Zrušit', style: 'cancel' },
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening URL:', error);
+        Alert.alert('Chyba', 'Nepodařilo se otevřít přihlašovací stránku.');
+      }
+      setIsLoading(false);
+    }
   };
 
-  const handleWebViewLogin = () => {
+  const handleWebViewLogin = async () => {
+    if (!isWebViewSupported || !WebView) {
+      // On unsupported platforms, open in external browser
+      try {
+        const supported = await Linking.canOpenURL(SEZNAM_LOGIN_URL);
+        if (supported) {
+          await Linking.openURL(SEZNAM_LOGIN_URL);
+          Alert.alert(
+            'Přihlášení v prohlížeči',
+            'Přihlaste se v prohlížeči a poté se vraťte do aplikace.',
+            [
+              {
+                text: 'Jsem přihlášen',
+                onPress: async () => {
+                  await login(email || 'uzivatel@email.cz', {
+                    timestamp: Date.now(),
+                    loginMethod: 'external-browser',
+                  });
+                  router.replace('/(tabs)/(home)');
+                },
+              },
+              { text: 'Zrušit', style: 'cancel' },
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening URL:', error);
+        Alert.alert('Chyba', 'Nepodařilo se otevřít přihlašovací stránku.');
+      }
+      return;
+    }
+
     setIsLoading(true);
     setWebViewUrl(SEZNAM_LOGIN_URL);
     setShowWebView(true);
@@ -94,7 +169,8 @@ export default function LoginScreen() {
     setWebViewUrl('');
   };
 
-  if (showWebView) {
+  // WebView UI (only shown on iOS/Android)
+  if (showWebView && isWebViewSupported && WebView) {
     return (
       <SafeAreaView style={styles.webViewContainer} edges={['top']}>
         <View style={styles.webViewHeader}>
@@ -120,10 +196,8 @@ export default function LoginScreen() {
               <Text style={styles.loadingText}>Načítání...</Text>
             </View>
           )}
-          // Enable cookies and storage
           sharedCookiesEnabled={true}
           thirdPartyCookiesEnabled={true}
-          // Security settings
           javaScriptEnabled={true}
           domStorageEnabled={true}
         />
@@ -143,6 +217,16 @@ export default function LoginScreen() {
           <Text style={styles.appTitle}>Email.cz</Text>
           <Text style={styles.appSubtitle}>Přihlášení přes Seznam.cz</Text>
         </View>
+
+        {!isWebViewSupported && (
+          <View style={styles.platformWarning}>
+            <IconSymbol name="exclamationmark.triangle.fill" size={24} color={colors.warning || '#FF9500'} />
+            <Text style={styles.platformWarningText}>
+              WebView není podporován na této platformě ({Platform.OS}). 
+              Přihlášení bude otevřeno v externím prohlížeči.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.formContainer}>
           <View style={styles.inputContainer}>
@@ -216,7 +300,11 @@ export default function LoginScreen() {
             onPress={handleWebViewLogin}
           >
             <IconSymbol name="globe" size={24} color={colors.primary} />
-            <Text style={styles.webLoginButtonText}>Přihlásit přes Seznam.cz web</Text>
+            <Text style={styles.webLoginButtonText}>
+              {isWebViewSupported 
+                ? 'Přihlásit přes Seznam.cz web' 
+                : 'Přihlásit v prohlížeči'}
+            </Text>
           </Pressable>
 
           <Pressable
@@ -264,6 +352,24 @@ const styles = StyleSheet.create({
     fontSize: Platform.OS === 'android' ? 18 : 16,
     color: colors.textSecondary,
     marginTop: 8,
+  },
+  platformWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.warning || '#FF9500',
+  },
+  platformWarningText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
   },
   formContainer: {
     width: '100%',
